@@ -42,7 +42,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 <div class="app">
   <header class="topbar">
     <img src="img/logo.png" class="logo" alt="Macroxel">
-    <div class="brand"><h1>MACROXEL Farmacovigilancia</h1><p>Seguridad de medicamentos, pacientes y consumo de antibióticos · v1.0.1</p></div>
+    <div class="brand"><h1>MACROXEL Farmacovigilancia</h1><p>Seguridad de medicamentos, pacientes y consumo de antibióticos · v1.0.0</p></div>
     <div class="top-actions">
       <span class="pill"><span id="connDot" class="dot"></span><span id="connText">Comprobando Firebase</span></span>
       <span id="licPill" class="pill">🔒 Licencia</span>
@@ -206,8 +206,8 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 
 <script>
 (()=>{'use strict';
-const VERSION='1.0.1',DEFAULT_DB='https://fir-login-536b6-default-rtdb.firebaseio.com',DEFAULT_BRANCH='HGAM';
-const LS={db:'mx_fv_db_v1',branch:'mx_fv_branch_v1',device:'mx_fv_device_v1',name:'mx_fv_name_v1',phone:'mx_fv_phone_v1',email:'mx_fv_email_v1',responsible:'mx_fv_responsible_v1',signal:'mx_fv_signal_v1',closeDays:'mx_fv_close_days_v1',reset:'mx_fv_reset_v1'};
+const VERSION='1.0.0',DEFAULT_DB='https://sistemas-macroxel-default-rtdb.firebaseio.com',DEFAULT_BRANCH='HGAM';
+const LS={db:'mx_fv_db_v2',branch:'mx_fv_branch_v1',device:'mx_fv_device_v1',name:'mx_fv_name_v1',phone:'mx_fv_phone_v1',email:'mx_fv_email_v1',responsible:'mx_fv_responsible_v1',signal:'mx_fv_signal_v1',closeDays:'mx_fv_close_days_v1',reset:'mx_fv_reset_v1'};
 const ROOT={licenses:'/viewer_licenses',users:'/viewer_users',patients:'/antibiotic_patient_list',patientHistory:'/antibiotic_patient_history',patientQueries:'/antibiotic_patient_queries',patientResponses:'/antibiotic_patient_responses',cases:'/pharmacovigilance_cases',audit:'/pharmacovigilance_audit',settings:'/pharmacovigilance_settings',reset:'/ecosystem_reset'};
 const $=id=>document.getElementById(id),txt=v=>String(v??'').trim(),num=v=>Number(v)||0,norm=v=>txt(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase(),esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 let licensed=false,user=null,patients=[],selectedPatient=null,patientRows=[],historyRows=[],cases=[],settings={},currentTasks=[],charts={},refreshTimer=null;
