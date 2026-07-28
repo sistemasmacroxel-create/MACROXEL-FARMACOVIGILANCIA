@@ -50,7 +50,7 @@ window.mxLogoFallback=function(img){
 <div class="app">
   <header class="topbar">
     <img src="img/logo.png" onerror="mxLogoFallback(this)" class="logo" alt="Macroxel">
-    <div class="brand"><h1>MACROXEL Farmacovigilancia</h1><p>Seguridad de medicamentos, pacientes y consumo de antibióticos · v1.0.3</p></div>
+    <div class="brand"><h1>MACROXEL Farmacovigilancia</h1><p>Seguridad de medicamentos, pacientes y consumo de antibióticos · v1.0.5</p></div>
     <div class="top-actions">
       <span class="pill"><span id="connDot" class="dot"></span><span id="connText">Comprobando Firebase</span></span>
       <span id="licPill" class="pill">🔒 Licencia</span>
@@ -60,7 +60,7 @@ window.mxLogoFallback=function(img){
   </header>
   <nav class="nav no-print">
     <button data-view="dashboard" class="active">📊 Resumen</button>
-    <button data-view="patients">🧑‍⚕️ Pacientes 30 días</button>
+    <button data-view="patients">👤 Pacientes 30 días</button>
     <button data-view="consumption">💊 Consumo antibióticos</button>
     <button data-view="cases">🛡️ Casos</button>
     <button data-view="gantt">📅 Gantt</button>
@@ -212,15 +212,14 @@ window.mxLogoFallback=function(img){
 <div id="loginGate" class="gate hidden"><div class="gate-card"><div class="gate-brand"><img src="img/logo.png" onerror="mxLogoFallback(this)"><div><h2>Acceso operativo</h2><div class="sub">Usa un usuario sincronizado desde Macroxel Hospitales.</div></div></div><div id="loginMsg" class="gate-msg">Captura usuario y contraseña.</div><div class="field"><label>Usuario</label><input id="loginUser" autocomplete="username"></div><div class="field" style="margin-top:8px"><label>Contraseña</label><input id="loginPass" type="password" autocomplete="current-password"></div><div class="toolbar" style="justify-content:flex-end;margin-top:12px"><button id="loginBtn" class="btn good">Entrar</button></div></div></div>
 <div id="printArea"></div>
 
-<script id="mx-ecosystem-dynamic-config-v102">
+<script id="mx-ecosystem-dynamic-config-v105">
 (function(){
   'use strict';
-  if(window.__mxEcosystemDynamicConfigV102) return;
-  window.__mxEcosystemDynamicConfigV102=true;
-  const DEFAULT_DB='https://sistemas-macroxel-default-rtdb.firebaseio.com';
+  if(window.__mxEcosystemDynamicConfigV105)return;
+  window.__mxEcosystemDynamicConfigV105=true;
   const DEFAULT_BRANCH='HGAM';
-  const CFG_KEY='mx_ecosystem_runtime_cfg_v2';
-  const LEGACY_JSON_KEYS=['mx_ab_patient_viewer_cfg_v2'];
+  const CFG_KEY='mx_ecosystem_runtime_cfg_v3';
+  const LEGACY_JSON_KEYS=['mx_ecosystem_runtime_cfg_v2','mx_ab_patient_viewer_cfg_v2'];
   const LEGACY_DB_KEYS=['mx_fv_db_v2','mx_visor_inventarios_db_url_v1'];
   const LEGACY_BRANCH_KEYS=['mx_fv_branch_v1','mx_visor_inventarios_branch_v1'];
   let running=null,lastCheck=0;
@@ -231,100 +230,147 @@ window.mxLogoFallback=function(img){
     try{
       const q=new URLSearchParams(location.search||'');
       return {db:normalizeDb(q.get('firebase')||q.get('db')||q.get('databaseURL')||''),branch:normalizeBranch(q.get('branch')||q.get('sucursal')||DEFAULT_BRANCH)};
-    }catch(_e){return {db:'',branch:DEFAULT_BRANCH}}
+    }catch(_e){return{db:'',branch:DEFAULT_BRANCH}}
+  }
+  function commonCfg(){
+    try{
+      const row=safeJson(localStorage.getItem(CFG_KEY));
+      if(row&&typeof row==='object')return{db:normalizeDb(row.db||row.databaseUrl||row.firebaseUrl||''),branch:normalizeBranch(row.branch||row.sucursal||DEFAULT_BRANCH),updatedAt:row.updatedAt||''};
+    }catch(_e){}
+    return null;
+  }
+  function legacyCandidates(){
+    const out=[];let branch=DEFAULT_BRANCH;
+    try{
+      for(const k of LEGACY_BRANCH_KEYS){const v=String(localStorage.getItem(k)||'').trim();if(v){branch=normalizeBranch(v);break;}}
+      for(const key of LEGACY_JSON_KEYS){
+        const row=safeJson(localStorage.getItem(key));
+        const db=row&&typeof row==='object'?normalizeDb(row.db||row.databaseUrl||row.firebaseUrl||''):'';
+        if(db)out.push({db,branch:normalizeBranch(row.branch||row.sucursal||branch)});
+      }
+      for(const key of LEGACY_DB_KEYS){const db=normalizeDb(localStorage.getItem(key)||'');if(db)out.push({db,branch});}
+    }catch(_e){}
+    const seen=new Set();return out.filter(r=>r.db&&!seen.has(r.db)&&(seen.add(r.db),true));
   }
   function getConfig(fallback){
+    const q=queryCfg();if(q.db)return q;
+    const common=commonCfg();if(common)return{db:common.db,branch:common.branch};
     const fb=fallback&&typeof fallback==='object'?fallback:{};
-    let db=normalizeDb(fb.db||fb.databaseUrl||fb.firebaseUrl||''),branch=normalizeBranch(fb.branch||fb.sucursal||DEFAULT_BRANCH),resolved=false;
-    try{
-      const q=queryCfg();
-      if(q.db){db=q.db;branch=q.branch;resolved=true;}
-      if(!resolved){
-        const common=safeJson(localStorage.getItem(CFG_KEY));
-        const commonDb=common&&typeof common==='object'?normalizeDb(common.db||common.databaseUrl||common.firebaseUrl||''):'';
-        if(commonDb){db=commonDb;branch=normalizeBranch(common.branch||common.sucursal||branch);resolved=true;}
-      }
-      if(!resolved){
-        for(const key of LEGACY_JSON_KEYS){
-          const row=safeJson(localStorage.getItem(key));
-          const legacyDb=row&&typeof row==='object'?normalizeDb(row.db||row.databaseUrl||row.firebaseUrl||''):'';
-          if(legacyDb){db=legacyDb;branch=normalizeBranch(row.branch||row.sucursal||branch);resolved=true;break;}
-        }
-      }
-      if(!resolved){
-        for(const key of LEGACY_DB_KEYS){const v=normalizeDb(localStorage.getItem(key)||'');if(v){db=v;resolved=true;break;}}
-        for(const key of LEGACY_BRANCH_KEYS){const v=String(localStorage.getItem(key)||'').trim();if(v){branch=normalizeBranch(v);break;}}
-      }
-    }catch(_e){}
-    return {db:db||DEFAULT_DB,branch};
+    return{db:normalizeDb(fb.db||fb.databaseUrl||fb.firebaseUrl||''),branch:normalizeBranch(fb.branch||fb.sucursal||DEFAULT_BRANCH)};
   }
   function saveConfig(input){
-    const previous=getConfig();
-    const row=input&&typeof input==='object'?input:{};
-    const clean={db:normalizeDb(row.db||row.databaseUrl||row.firebaseUrl||previous.db)||DEFAULT_DB,branch:normalizeBranch(row.branch||row.sucursal||previous.branch),updatedAt:new Date().toISOString()};
+    const previous=getConfig();const row=input&&typeof input==='object'?input:{};
+    const hasDb=['db','databaseUrl','firebaseUrl','url'].some(k=>Object.prototype.hasOwnProperty.call(row,k));
+    const db=hasDb?normalizeDb(row.db||row.databaseUrl||row.firebaseUrl||row.url||''):previous.db;
+    const branch=normalizeBranch(row.branch||row.sucursal||previous.branch);
+    const clean={db,branch,updatedAt:new Date().toISOString(),source:'viewer_runtime_v105'};
     try{
       localStorage.setItem(CFG_KEY,JSON.stringify(clean));
-      for(const key of LEGACY_JSON_KEYS)localStorage.setItem(key,JSON.stringify({db:clean.db,branch:clean.branch}));
-      for(const key of LEGACY_DB_KEYS)localStorage.setItem(key,clean.db);
-      for(const key of LEGACY_BRANCH_KEYS)localStorage.setItem(key,clean.branch);
+      for(const key of LEGACY_JSON_KEYS)localStorage.setItem(key,JSON.stringify({db,branch,updatedAt:clean.updatedAt}));
+      for(const key of LEGACY_DB_KEYS){if(db)localStorage.setItem(key,db);else localStorage.removeItem(key);}
+      for(const key of LEGACY_BRANCH_KEYS)localStorage.setItem(key,branch);
     }catch(_e){}
-    return {db:clean.db,branch:clean.branch};
+    try{
+      for(const id of ['viewerDb','mxVaDb','dbUrlInput','setDb']){const el=document.getElementById(id);if(el&&el.value!==db)el.value=db;}
+      for(const id of ['viewerBranch','mxVaBranch','branchInput','setBranch']){const el=document.getElementById(id);if(el&&el.value!==branch)el.value=branch;}
+    }catch(_e){}
+    renderBadge();return{db,branch};
   }
+  function clearLegacyDbValues(){try{for(const k of LEGACY_DB_KEYS)localStorage.removeItem(k);for(const k of LEGACY_JSON_KEYS)localStorage.removeItem(k);}catch(_e){}}
   async function readRouting(base,branch){
-    const b=normalizeDb(base); if(!b)return null;
+    const b=normalizeDb(base);if(!b)return null;
     for(const path of ['/ecosystem_config/'+encodeURIComponent(branch),'/ecosystem_config/current']){
-      try{
-        const r=await fetch(b+path+'.json?ts='+Date.now(),{cache:'no-store'});
-        if(!r.ok)continue;
-        const data=await r.json(); if(data&&typeof data==='object')return data;
-      }catch(_e){}
+      try{const r=await fetch(b+path+'.json?ts='+Date.now(),{cache:'no-store'});if(!r.ok)continue;const data=await r.json();if(data&&typeof data==='object')return data;}catch(_e){}
     }
     return null;
+  }
+  function mergeRemote(previous,current){
+    if(!previous||typeof previous!=='object'||Array.isArray(previous))return current===undefined?previous:current;
+    if(!current||typeof current!=='object'||Array.isArray(current))return previous;
+    const merged={...previous};for(const[k,v]of Object.entries(current))merged[k]=(v&&typeof v==='object'&&!Array.isArray(v)&&merged[k]&&typeof merged[k]==='object'&&!Array.isArray(merged[k]))?mergeRemote(merged[k],v):v;return merged;
+  }
+  async function migrateLicenseTrees(previousDb,nextDb,branch){
+    const oldBase=normalizeDb(previousDb),newBase=normalizeDb(nextDb);if(!oldBase||!newBase||oldBase===newBase)return;
+    for(const root of['viewer_licenses','viewer_license_history']){
+      const path='/'+root+'/'+encodeURIComponent(branch)+'.json';
+      try{
+        const oldResp=await fetch(oldBase+path+'?ts='+Date.now(),{cache:'no-store'});if(!oldResp.ok)continue;const oldData=await oldResp.json();if(!oldData||typeof oldData!=='object')continue;
+        let newData=null;try{const nr=await fetch(newBase+path+'?ts='+Date.now(),{cache:'no-store'});if(nr.ok)newData=await nr.json();}catch(_e){}
+        await fetch(newBase+path,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(mergeRemote(oldData,newData)),cache:'no-store'});
+      }catch(_e){}
+    }
+  }
+  async function migrateLegacy(){
+    for(const old of legacyCandidates()){
+      const route=await readRouting(old.db,old.branch);
+      const nextDb=normalizeDb(route&&(route.databaseUrl||route.db||route.firebaseUrl||route.url)||'');
+      if(nextDb){const nextBranch=normalizeBranch(route.branch||route.sucursal||old.branch);await migrateLicenseTrees(old.db,nextDb,nextBranch);return saveConfig({db:nextDb,branch:nextBranch});}
+    }
+    clearLegacyDbValues();return{db:'',branch:DEFAULT_BRANCH};
   }
   async function ensureConfig(force=false){
     if(running)return running;
     if(!force&&Date.now()-lastCheck<10000)return getConfig();
     running=(async()=>{
+      const q=queryCfg();if(q.db)saveConfig(q);
       let current=getConfig();
-      for(let hop=0;hop<2;hop++){
-        const route=await readRouting(current.db,current.branch);
-        if(!route)break;
-        const nextDb=normalizeDb(route.databaseUrl||route.db||route.firebaseUrl||route.url||'');
-        const nextBranch=normalizeBranch(route.branch||route.sucursal||current.branch);
-        if(!nextDb)break;
-        const changed=nextDb!==current.db||nextBranch!==current.branch;
-        const previous=current;
-        current=saveConfig({db:nextDb,branch:nextBranch});
-        if(changed){
-          try{window.dispatchEvent(new CustomEvent('mx-viewer-config-changed',{detail:{previous,next:current,source:'ecosystem_config'}}));}catch(_e){}
-          continue;
+      if(!current.db&&!commonCfg())current=await migrateLegacy();
+      if(current.db){
+        for(let hop=0;hop<3;hop++){
+          const route=await readRouting(current.db,current.branch);if(!route)break;
+          const nextDb=normalizeDb(route.databaseUrl||route.db||route.firebaseUrl||route.url||'');
+          const nextBranch=normalizeBranch(route.branch||route.sucursal||current.branch);if(!nextDb)break;
+          const changed=nextDb!==current.db||nextBranch!==current.branch;const previous=current;
+          if(changed)await migrateLicenseTrees(previous.db,nextDb,nextBranch);
+          current=saveConfig({db:nextDb,branch:nextBranch});
+          if(changed){try{window.dispatchEvent(new CustomEvent('mx-viewer-config-changed',{detail:{previous,next:current,source:'ecosystem_config'}}));}catch(_e){}continue;}
+          break;
         }
-        break;
       }
-      lastCheck=Date.now();
-      return current;
+      lastCheck=Date.now();renderBadge();return current;
     })().finally(()=>{running=null});
     return running;
   }
-  window.mxEcosystemGetConfig=getConfig;
-  window.mxEcosystemSaveConfig=saveConfig;
-  window.mxEnsureEcosystemConfig=ensureConfig;
-  saveConfig(getConfig());
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>ensureConfig(true),{once:true});else ensureConfig(true);
-  window.addEventListener('focus',()=>ensureConfig(true));
-  window.addEventListener('online',()=>ensureConfig(true));
+  function shortDb(db){
+    if(!db)return'Sin configurar';
+    try{const u=new URL(db);return u.host+(u.pathname&&u.pathname!=='/'?u.pathname:'');}catch(_e){return db;}
+  }
+  function renderBadge(){
+    try{
+      const el=document.getElementById('mxFirebaseUrlBadge');if(!el)return;
+      const c=getConfig();el.classList.toggle('missing',!c.db);el.title=c.db?('Firebase activa: '+c.db+'\nSucursal: '+c.branch+'\nHaz clic para cambiarla.'):'Firebase sin configurar. Haz clic para capturar la URL.';
+      el.innerHTML='<span class="mx-db-dot"></span><span class="mx-db-label">Firebase: '+shortDb(c.db)+'</span><small>'+c.branch+'</small>';
+    }catch(_e){}
+  }
+  function openConfig(){
+    const ids=['viewerDb','mxVaDb','dbUrlInput','setDb','mxRemoteDbInput'];
+    for(const id of ids){const input=document.getElementById(id);if(input){const btn=document.getElementById('btnConfig')||document.getElementById('openSettings');try{btn&&btn.click();}catch(_e){}setTimeout(()=>{input.focus();input.select&&input.select();},80);return;}}
+    const c=getConfig(),value=prompt('URL de Firebase activa para este ecosistema:',c.db||'');
+    if(value===null)return;const clean=normalizeDb(value);if(clean&&!/^https?:\/\//i.test(clean)){alert('La URL debe comenzar con http:// o https://');return;}
+    saveConfig({db:clean,branch:c.branch});location.reload();
+  }
+  function installBadge(){
+    if(document.getElementById('mxFirebaseUrlBadge')){renderBadge();return;}
+    const style=document.createElement('style');style.id='mx-firebase-url-badge-v105-style';style.textContent='#mxFirebaseUrlBadge{position:fixed;right:10px;bottom:8px;z-index:2147483646;display:flex;align-items:center;gap:6px;max-width:min(520px,calc(100vw - 20px));padding:5px 9px;border:1px solid rgba(15,118,110,.25);border-radius:999px;background:rgba(240,253,250,.94);box-shadow:0 4px 16px rgba(15,23,42,.12);font:600 9px/1.2 Segoe UI,Arial,sans-serif;color:#0f4c45;cursor:pointer;backdrop-filter:blur(8px)}#mxFirebaseUrlBadge.missing{background:rgba(255,247,237,.96);border-color:rgba(194,65,12,.25);color:#9a3412}#mxFirebaseUrlBadge .mx-db-dot{width:7px;height:7px;border-radius:50%;background:#16a34a;flex:none;box-shadow:0 0 0 3px rgba(22,163,74,.12)}#mxFirebaseUrlBadge.missing .mx-db-dot{background:#ea580c;box-shadow:0 0 0 3px rgba(234,88,12,.12)}#mxFirebaseUrlBadge .mx-db-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#mxFirebaseUrlBadge small{font-size:8px;opacity:.72;flex:none}@media(max-width:640px){#mxFirebaseUrlBadge{left:8px;right:8px;justify-content:center}}';document.head.appendChild(style);
+    const el=document.createElement('div');el.id='mxFirebaseUrlBadge';el.setAttribute('role','button');el.tabIndex=0;el.onclick=openConfig;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openConfig();}};document.body.appendChild(el);renderBadge();
+  }
+  window.mxEcosystemGetConfig=getConfig;window.mxEcosystemSaveConfig=saveConfig;window.mxEnsureEcosystemConfig=ensureConfig;window.mxEcosystemOpenConfig=openConfig;window.mxRenderFirebaseUrlBadge=renderBadge;
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{installBadge();ensureConfig(true);},{once:true});else{installBadge();ensureConfig(true);}
+  window.addEventListener('focus',()=>ensureConfig(true));window.addEventListener('online',()=>ensureConfig(true));
+  window.addEventListener('mx-viewer-config-changed',renderBadge);
+  window.addEventListener('storage',ev=>{if(ev.key===CFG_KEY){renderBadge();try{window.dispatchEvent(new CustomEvent('mx-viewer-config-changed',{detail:{source:'storage'}}));}catch(_e){}setTimeout(()=>location.reload(),180);}});
   setInterval(()=>ensureConfig(true),30000);
 })();
 </script>
 <script>
 (()=>{'use strict';
-const VERSION='1.0.3',DEFAULT_DB='https://sistemas-macroxel-default-rtdb.firebaseio.com',DEFAULT_BRANCH='HGAM';
+const VERSION='1.0.5',DEFAULT_DB='',DEFAULT_BRANCH='HGAM';
 const LS={db:'mx_fv_db_v2',branch:'mx_fv_branch_v1',device:'mx_fv_device_v1',name:'mx_fv_name_v1',phone:'mx_fv_phone_v1',email:'mx_fv_email_v1',responsible:'mx_fv_responsible_v1',signal:'mx_fv_signal_v1',closeDays:'mx_fv_close_days_v1',reset:'mx_fv_reset_v1',license:'mx_fv_license_cache_v1'};
 const ROOT={licenses:'/viewer_licenses',users:'/viewer_users',patients:'/antibiotic_patient_list',patientHistory:'/antibiotic_patient_history',patientQueries:'/antibiotic_patient_queries',patientResponses:'/antibiotic_patient_responses',cases:'/pharmacovigilance_cases',audit:'/pharmacovigilance_audit',settings:'/pharmacovigilance_settings',reset:'/ecosystem_reset'};
 const $=id=>document.getElementById(id),txt=v=>String(v??'').trim(),num=v=>Number(v)||0,norm=v=>txt(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase(),esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 let licensed=false,user=null,patients=[],selectedPatient=null,patientRows=[],historyRows=[],cases=[],settings={},currentTasks=[],charts={},refreshTimer=null;
 function runtimeCfg(){return window.mxEcosystemGetConfig?window.mxEcosystemGetConfig({db:DEFAULT_DB,branch:DEFAULT_BRANCH}):{db:txt(localStorage.getItem(LS.db)||DEFAULT_DB).replace(/\/+$/,''),branch:txt(localStorage.getItem(LS.branch)||DEFAULT_BRANCH).toUpperCase()}}function db(){return runtimeCfg().db}function branch(){return runtimeCfg().branch}function keyOf(v){try{return btoa(unescape(encodeURIComponent(String(v).toLowerCase()))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}catch(e){return String(v).replace(/[.#$\[\]\/]/g,'_')}}
-function url(path){return db()+path+'.json'}async function get(path){if(window.mxEnsureEcosystemConfig)await window.mxEnsureEcosystemConfig();const r=await fetch(url(path)+(path.includes('?')?'&':'?')+'ts='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('Firebase HTTP '+r.status);return r.json()}async function put(path,data,method='PUT'){if(window.mxEnsureEcosystemConfig)await window.mxEnsureEcosystemConfig();const r=await fetch(url(path),{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(!r.ok)throw new Error('Firebase HTTP '+r.status);return r.json().catch(()=>null)}async function del(path){if(window.mxEnsureEcosystemConfig)await window.mxEnsureEcosystemConfig();const r=await fetch(url(path),{method:'DELETE'});if(!r.ok)throw new Error('Firebase HTTP '+r.status)}
+function url(path){const base=db();if(!base)throw new Error('Firebase sin configurar. Presiona la etiqueta inferior y captura la URL.');return base+path+'.json'}async function get(path){if(window.mxEnsureEcosystemConfig)await window.mxEnsureEcosystemConfig();const r=await fetch(url(path)+(path.includes('?')?'&':'?')+'ts='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('Firebase HTTP '+r.status);return r.json()}async function put(path,data,method='PUT'){if(window.mxEnsureEcosystemConfig)await window.mxEnsureEcosystemConfig();const r=await fetch(url(path),{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(!r.ok)throw new Error('Firebase HTTP '+r.status);return r.json().catch(()=>null)}async function del(path){if(window.mxEnsureEcosystemConfig)await window.mxEnsureEcosystemConfig();const r=await fetch(url(path),{method:'DELETE'});if(!r.ok)throw new Error('Firebase HTTP '+r.status)}
 function deviceId(){let id=localStorage.getItem(LS.device);if(!id){id='MACROXEL-FV-'+crypto.getRandomValues(new Uint32Array(2)).join('').slice(0,12)+'-'+Math.random().toString(36).slice(2,6).toUpperCase();localStorage.setItem(LS.device,id)}return id}
 async function digest(v){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(v)));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')}
 function parseDate(v){if(!v)return null;if(v instanceof Date)return v;const s=txt(v);let m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(m)return new Date(+m[3],+m[2]-1,+m[1]);m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return new Date(+m[1],+m[2]-1,+m[3]);const d=new Date(s);return Number.isNaN(d.getTime())?null:d}function fmtDate(v,withTime=false){const d=parseDate(v);return d?d.toLocaleString('es-MX',withTime?{dateStyle:'short',timeStyle:'short'}:{dateStyle:'short'}):txt(v)||'—'}function isoDate(d=new Date()){return d.toISOString().slice(0,10)}function addDays(date,n){const d=new Date(date);d.setDate(d.getDate()+n);return d}function within30(v){const d=parseDate(v);if(!d)return true;const min=new Date();min.setHours(0,0,0,0);min.setDate(min.getDate()-29);return d>=min}
@@ -437,7 +483,7 @@ function printCase(id){const c=cases.find(x=>x.id===id);if(!c)return;const tasks
 function printDashboard(){$('printArea').innerHTML=`<div class="print-head"><img src="img/logo.png" onerror="mxLogoFallback(this)"><div><h1>MACROXEL Farmacovigilancia</h1><div>Resumen ejecutivo · ${esc(branch())}</div></div><div style="margin-left:auto">${esc(fmtDate(new Date(),true))}</div></div><div class="print-grid"><div class="print-box"><b>Pacientes 30 días</b>${patients.length}</div><div class="print-box"><b>Piezas antibióticos</b>${antibioticRows().reduce((s,r)=>s+recordPieces(r),0)}</div><div class="print-box"><b>Casos abiertos</b>${cases.filter(c=>c.status!=='Cerrado').length}</div><div class="print-box"><b>Casos graves</b>${cases.filter(c=>c.seriousness&&c.seriousness!=='No grave').length}</div></div><h3>Señales internas</h3>${buildSignals().map(s=>`<div class="print-box"><b>${esc(s.title)}</b>${esc(s.detail)}</div>`).join('')||'<p>Sin señales.</p>'}<h3>Casos registrados</h3><table class="print-table"><thead><tr><th>Folio</th><th>Paciente</th><th>Medicamento</th><th>Tipo</th><th>Gravedad</th><th>Estado</th></tr></thead><tbody>${cases.map(c=>`<tr><td>${esc(c.folio)}</td><td>${esc(c.patientName)}</td><td>${esc(c.drug)}</td><td>${esc(c.type)}</td><td>${esc(c.seriousness)}</td><td>${esc(c.status)}</td></tr>`).join('')}</tbody></table>`;setTimeout(()=>window.print(),100)}
 function printGanttReport(){const filter=txt($('ganttCaseFilter').value),rows=[];cases.filter(c=>c.status!=='Cerrado'&&(!filter||c.id===filter)).forEach(c=>(c.tasks||[]).forEach(t=>rows.push([c.folio,c.patientName,c.drug,t.name,t.start,t.end,t.responsible,t.status])));$('printArea').innerHTML=`<div class="print-head"><img src="img/logo.png" onerror="mxLogoFallback(this)"><div><h1>MACROXEL Farmacovigilancia</h1><div>Plan de seguimiento / Diagrama de Gantt</div></div><div style="margin-left:auto">${esc(fmtDate(new Date(),true))}</div></div><table class="print-table"><thead><tr><th>Folio</th><th>Paciente</th><th>Medicamento</th><th>Actividad</th><th>Inicio</th><th>Fin</th><th>Responsable</th><th>Estado</th></tr></thead><tbody>${rows.map(r=>`<tr>${r.map(x=>`<td>${esc(x||'—')}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="8">Sin actividades.</td></tr>'}</tbody></table>`;setTimeout(()=>window.print(),100)}
 function openSettings(){if(String(user?.username).toLowerCase()!=='admin')return alert('Solo admin puede modificar la configuración.');$('setDb').value=db();$('setBranch').value=branch();$('setResponsible').value=settings.responsible||'';$('setSignalCount').value=settings.signalCount||3;$('setCloseDays').value=settings.closeDays||15;$('settingsModal').classList.remove('hidden')}
-async function saveSettings(){const runtime=window.mxEcosystemSaveConfig?window.mxEcosystemSaveConfig({db:txt($('setDb').value)||DEFAULT_DB,branch:txt($('setBranch').value)||DEFAULT_BRANCH}):{db:txt($('setDb').value)||DEFAULT_DB,branch:txt($('setBranch').value)||DEFAULT_BRANCH};localStorage.setItem(LS.db,runtime.db);localStorage.setItem(LS.branch,runtime.branch);localStorage.setItem(LS.responsible,txt($('setResponsible').value));localStorage.setItem(LS.signal,String(Math.max(2,num($('setSignalCount').value)||3)));localStorage.setItem(LS.closeDays,String(Math.max(1,num($('setCloseDays').value)||15)));settings={responsible:txt($('setResponsible').value),signalCount:Math.max(2,num($('setSignalCount').value)||3),closeDays:Math.max(1,num($('setCloseDays').value)||15),updatedAt:new Date().toISOString(),updatedBy:user?.username||''};try{await put(`${ROOT.settings}/${branch()}`,settings)}catch(e){}$('settingsModal').classList.add('hidden');await loadAll(true);alert('Configuración guardada.')}
+async function saveSettings(){const runtime=window.mxEcosystemSaveConfig?window.mxEcosystemSaveConfig({db:txt($('setDb').value),branch:txt($('setBranch').value)||DEFAULT_BRANCH}):{db:txt($('setDb').value),branch:txt($('setBranch').value)||DEFAULT_BRANCH};localStorage.setItem(LS.db,runtime.db);localStorage.setItem(LS.branch,runtime.branch);localStorage.setItem(LS.responsible,txt($('setResponsible').value));localStorage.setItem(LS.signal,String(Math.max(2,num($('setSignalCount').value)||3)));localStorage.setItem(LS.closeDays,String(Math.max(1,num($('setCloseDays').value)||15)));settings={responsible:txt($('setResponsible').value),signalCount:Math.max(2,num($('setSignalCount').value)||3),closeDays:Math.max(1,num($('setCloseDays').value)||15),updatedAt:new Date().toISOString(),updatedBy:user?.username||''};try{await put(`${ROOT.settings}/${branch()}`,settings)}catch(e){}$('settingsModal').classList.add('hidden');await loadAll(true);alert('Configuración guardada.')}
 function bind(){document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>showView(b.dataset.view));$('refreshPatients').onclick=()=>loadClinicalData(true);$('patientSearch').oninput=renderPatientList;$('patientNewCase').onclick=()=>openCase(null,selectedPatient);$('refreshConsumption').onclick=()=>loadClinicalData(true);$('consumptionSearch').oninput=renderConsumption;$('caseSearch').oninput=renderCases;$('caseFilter').onchange=renderCases;$('newCaseBtn').onclick=()=>openCase();$('closeCaseModal').onclick=()=>$('caseModal').classList.add('hidden');$('caseModal').onclick=e=>{if(e.target===$('caseModal'))$('caseModal').classList.add('hidden')};$('casePatient').onchange=()=>{const p=patients.find(x=>x.key===$('casePatient').value);if(p){$('casePatientName').value=p.nombre;$('caseFile').value=p.expediente||'';$('caseService').value=p.ultimoServicio||''}};$('addTaskBtn').onclick=()=>{currentTasks.push({name:'Nueva actividad',start:isoDate(),end:isoDate(addDays(new Date(),1)),responsible:settings.responsible||user?.username||'',status:'Pendiente'});renderTaskRows()};$('saveCaseBtn').onclick=saveCase;$('deleteCaseBtn').onclick=deleteCurrentCase;$('printCaseBtn').onclick=()=>printCase(txt($('caseId').value));$('ganttCaseFilter').onchange=renderGantt;$('printGantt').onclick=printGanttReport;$('recalcSignals').onclick=renderSignals;$('exportCasesCsv').onclick=exportCasesCsv;$('exportConsumptionCsv').onclick=exportConsumptionCsv;$('exportBackup').onclick=exportBackup;$('printDashboard').onclick=printDashboard;$('openSettings').onclick=openSettings;$('closeSettings').onclick=()=>$('settingsModal').classList.add('hidden');$('saveSettings').onclick=saveSettings;$('actSubmit').onclick=submitActivation;$('actValidate').onclick=()=>validateLicense(true);$('loginBtn').onclick=login;$('loginPass').onkeydown=e=>{if(e.key==='Enter')login()};$('logoutBtn').onclick=logout;window.addEventListener('online',()=>validateLicense(false));setInterval(()=>validateLicense(false),5*60*1000);window.addEventListener('resize',()=>{const active=document.querySelector('.nav button.active')?.dataset.view;if(active==='dashboard')renderDashboard();if(active==='patients'&&selectedPatient)renderPatientDetail()})}
 async function init(){if(window.mxEnsureEcosystemConfig)await window.mxEnsureEcosystemConfig(true);$('deviceBox').value=deviceId();$('actName').value=localStorage.getItem(LS.name)||'';$('actPhone').value=localStorage.getItem(LS.phone)||'';$('actEmail').value=localStorage.getItem(LS.email)||'';bind();await validateLicense(false)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
