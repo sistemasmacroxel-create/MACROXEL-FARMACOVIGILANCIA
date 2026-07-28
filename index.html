@@ -50,7 +50,7 @@ window.mxLogoFallback=function(img){
 <div class="app">
   <header class="topbar">
     <img src="img/logo.png" onerror="mxLogoFallback(this)" class="logo" alt="Macroxel">
-    <div class="brand"><h1>MACROXEL Farmacovigilancia</h1><p>Seguridad de medicamentos, pacientes y consumo de antibióticos · v1.0.2</p></div>
+    <div class="brand"><h1>MACROXEL Farmacovigilancia</h1><p>Seguridad de medicamentos, pacientes y consumo de antibióticos · v1.0.3</p></div>
     <div class="top-actions">
       <span class="pill"><span id="connDot" class="dot"></span><span id="connText">Comprobando Firebase</span></span>
       <span id="licPill" class="pill">🔒 Licencia</span>
@@ -214,12 +214,12 @@ window.mxLogoFallback=function(img){
 
 <script>
 (()=>{'use strict';
-const VERSION='1.0.2',DEFAULT_DB='https://sistemas-macroxel-default-rtdb.firebaseio.com',DEFAULT_BRANCH='HGAM';
+const VERSION='1.0.3',DEFAULT_DB='https://sistemas-macroxel-default-rtdb.firebaseio.com',DEFAULT_BRANCH='HGAM';
 const LS={db:'mx_fv_db_v2',branch:'mx_fv_branch_v1',device:'mx_fv_device_v1',name:'mx_fv_name_v1',phone:'mx_fv_phone_v1',email:'mx_fv_email_v1',responsible:'mx_fv_responsible_v1',signal:'mx_fv_signal_v1',closeDays:'mx_fv_close_days_v1',reset:'mx_fv_reset_v1',license:'mx_fv_license_cache_v2'};
 const ROOT={licenses:'/viewer_licenses',users:'/viewer_users',patients:'/antibiotic_patient_list',patientHistory:'/antibiotic_patient_history',patientQueries:'/antibiotic_patient_queries',patientResponses:'/antibiotic_patient_responses',cases:'/pharmacovigilance_cases',audit:'/pharmacovigilance_audit',settings:'/pharmacovigilance_settings',reset:'/ecosystem_reset'};
 const $=id=>document.getElementById(id),txt=v=>String(v??'').trim(),num=v=>Number(v)||0,norm=v=>txt(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase(),esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 let licensed=false,user=null,patients=[],selectedPatient=null,patientRows=[],historyRows=[],cases=[],settings={},currentTasks=[],charts={},refreshTimer=null;
-function db(){return txt(localStorage.getItem(LS.db)||DEFAULT_DB).replace(/\/+$/,'')}function branch(){return txt(localStorage.getItem(LS.branch)||DEFAULT_BRANCH).toUpperCase()}function keyOf(v){try{return btoa(unescape(encodeURIComponent(String(v).toLowerCase()))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}catch(e){return String(v).replace(/[.#$\[\]\/]/g,'_')}}
+function db(){return txt(localStorage.getItem(LS.db)||DEFAULT_DB).replace(/\/+$/,'')}function branch(){const b=txt(localStorage.getItem(LS.branch)||DEFAULT_BRANCH).toUpperCase();if(!b||b==='SISTEMA DE INVENTARIO PRUEBAS'){try{localStorage.setItem(LS.branch,DEFAULT_BRANCH)}catch(_e){}return DEFAULT_BRANCH}return b}function keyOf(v){try{return btoa(unescape(encodeURIComponent(String(v).toLowerCase()))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}catch(e){return String(v).replace(/[.#$\[\]\/]/g,'_')}}
 function url(path){return db()+path+'.json'}async function get(path){const r=await fetch(url(path)+(path.includes('?')?'&':'?')+'ts='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('Firebase HTTP '+r.status);return r.json()}async function put(path,data,method='PUT'){const r=await fetch(url(path),{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(!r.ok)throw new Error('Firebase HTTP '+r.status);return r.json().catch(()=>null)}async function del(path){const r=await fetch(url(path),{method:'DELETE'});if(!r.ok)throw new Error('Firebase HTTP '+r.status)}
 function deviceId(){let id=localStorage.getItem(LS.device);if(!id){id='MACROXEL-FV-'+crypto.getRandomValues(new Uint32Array(2)).join('').slice(0,12)+'-'+Math.random().toString(36).slice(2,6).toUpperCase();localStorage.setItem(LS.device,id)}return id}
 async function digest(v){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(v)));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')}
@@ -338,5 +338,21 @@ async function init(){$('deviceBox').value=deviceId();$('actName').value=localSt
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 </script>
+
+<style id="mx-connection-diagnostic-style-v103">
+#mxConnectionDiagnostic{position:fixed;right:8px;bottom:4px;z-index:9997;max-width:72vw;padding:3px 7px;border-radius:8px;background:rgba(255,255,255,.86);border:1px solid rgba(148,163,184,.45);box-shadow:0 2px 8px rgba(15,23,42,.08);font:600 9px/1.2 'Segoe UI',Arial,sans-serif;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;backdrop-filter:blur(3px)}
+@media(max-width:640px){#mxConnectionDiagnostic{font-size:8px;right:4px;bottom:3px;max-width:88vw}}
+</style>
+
+<script id="mx-connection-diagnostic-v103">
+(function(){
+  'use strict';
+  function migrate(){try{const b=String(localStorage.getItem(LS.branch)||'').trim().toUpperCase();if(!b||b==='SISTEMA DE INVENTARIO PRUEBAS')localStorage.setItem(LS.branch,'HGAM');}catch(_e){}}
+  function render(){try{migrate();let el=document.getElementById('mxConnectionDiagnostic');if(!el){el=document.createElement('div');el.id='mxConnectionDiagnostic';document.body.appendChild(el);}const d=(typeof db==='function'?String(db()):'').replace(/\/+$/,''),b=(typeof branch==='function'?String(branch()):'HGAM').toUpperCase();el.textContent='Firebase: '+(d||'SIN URL')+' · '+b;el.title=el.textContent;}catch(_e){}}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',render,{once:true});else render();
+  window.addEventListener('online',render);
+})();
+</script>
+
 </body>
 </html>
